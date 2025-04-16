@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Football Trivia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Subtle background pattern resembling turf */
+            background-color: #166534; /* Dark Green */
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .game-title {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* Button Styles */
+        .btn {
+            @apply px-6 py-3 rounded-lg shadow-md text-lg font-semibold transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2;
+        }
+
+        .btn-primary {
+            @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+        }
+
+        .btn-secondary {
+            @apply bg-yellow-400 text-gray-800 hover:bg-yellow-500 focus:ring-yellow-300;
+        }
+
+        .btn-danger {
+             @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+        }
+
+        .btn-mode {
+             @apply bg-gray-700 text-white hover:bg-gray-800 focus:ring-gray-500 w-full mb-3 text-left;
+        }
+
+        .btn-answer {
+            @apply bg-white text-gray-800 border border-gray-300 hover:bg-gray-100 focus:ring-gray-400 w-full mb-3 text-left;
+        }
+
+        /* Feedback Animations */
+        .correct-answer {
+            animation: glow-green 1s ease-out;
+        }
+
+        .incorrect-answer {
+            animation: glow-red 1s ease-out;
+        }
+
+        @keyframes glow-green {
+            0% { box-shadow: 0 0 5px #10B981, 0 0 10px #10B981; background-color: #A7F3D0;}
+            50% { box-shadow: 0 0 20px #10B981, 0 0 30px #10B981; background-color: #6EE7B7;}
+            100% { box-shadow: 0 0 5px #10B981, 0 0 10px #10B981; background-color: #A7F3D0;}
+        }
+
+        @keyframes glow-red {
+            0% { box-shadow: 0 0 5px #EF4444, 0 0 10px #EF4444; background-color: #FECACA;}
+            50% { box-shadow: 0 0 20px #EF4444, 0 0 30px #EF4444; background-color: #FCA5A5;}
+            100% { box-shadow: 0 0 5px #EF4444, 0 0 10px #EF4444; background-color: #FECACA;}
+        }
+
+        /* Message Box */
+        #message-box {
+            @apply fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50;
+        }
+        #message-content {
+            @apply bg-white p-8 rounded-lg shadow-xl text-center max-w-md;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-2xl bg-gray-50 rounded-xl shadow-2xl border-4 border-yellow-400">
+
+        <h1 class="game-title text-4xl md:text-5xl font-bold text-center text-blue-800 mb-6">College Football Trivia</h1>
+
+        <div id="mode-selection" class="text-center">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700">Choose a Game Mode:</h2>
+            <div class="grid grid-cols-1 gap-4">
+                 <button class="btn btn-mode" data-mode="national_champions">🏆 National Champions</button>
+                 <button class="btn btn-mode" data-mode="heisman_winners">🏅 Heisman Winners</button>
+                 <button class="btn btn-mode" data-mode="bowl_history">🏟️ Bowl History</button>
+                 <button class="btn btn-mode" data-mode="mascots">🐘 Mascots</button>
+                 <button class="btn btn-mode" data-mode="stats">📊 Stats</button>
+            </div>
+             <div class="mt-8">
+                <button id="music-toggle" class="btn btn-secondary">🎵 Play Music</button>
+            </div>
+        </div>
+
+        <div id="gameplay" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <div id="score" class="text-xl font-bold text-blue-700">Score: 0</div>
+                <div id="question-counter" class="text-lg text-gray-600">Question 1 / 10</div>
+            </div>
+            <div id="question-container" class="mb-6 p-4 bg-blue-100 rounded-lg border border-blue-300">
+                <p id="question-text" class="text-xl text-gray-800 font-medium"></p>
+            </div>
+            <div id="answers-container" class="grid grid-cols-1 gap-3">
+                </div>
+             <button id="quit-game" class="btn btn-danger mt-6 w-full">Quit Game</button>
+        </div>
+
+        <div id="message-box" class="hidden">
+            <div id="message-content">
+                <h3 id="message-title" class="text-2xl font-bold mb-4">Game Over!</h3>
+                <p id="message-text" class="text-lg mb-6">Your final score is...</p>
+                <button id="message-close-btn" class="btn btn-primary">Play Again</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const modeSelectionDiv = document.getElementById('mode-selection');
+        const gameplayDiv = document.getElementById('gameplay');
+        const scoreDisplay = document.getElementById('score');
+        const questionCounterDisplay = document.getElementById('question-counter');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.getElementById('answers-container');
+        const modeButtons = document.querySelectorAll('.btn-mode');
+        const musicToggleButton = document.getElementById('music-toggle');
+        const quitGameButton = document.getElementById('quit-game');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const messageCloseBtn = document.getElementById('message-close-btn');
+
+        // --- Game State ---
+        let currentMode = '';
+        let currentQuestions = [];
+        let questionIndex = 0;
+        let score = 0;
+        const TOTAL_QUESTIONS = 5; // Using 5 for brevity, change to 10 for full game
+
+        // --- Audio ---
+        let musicPlaying = false;
+        let synth; // Tone.js synth
+        let musicPart; // Using Tone.Part for complex sequences instead of Tone.Loop
+
+        // --- Trivia Data ---
+        // (Trivia data remains the same as previous version)
+        const triviaData = {
+            national_champions: [
+                { question: "Which school won the first College Football Playoff National Championship in the 2014 season?", options: ["Alabama", "Clemson", "Ohio State", "Oregon"], answer: "Ohio State" },
+                { question: "Which team boasts the most AP National Championships?", options: ["Notre Dame", "Alabama", "USC", "Oklahoma"], answer: "Alabama" },
+                { question: "In what year did the BCS National Championship Game era begin?", options: ["1992", "1998", "2004", "2006"], answer: "1998" },
+                { question: "Which team won the last National Championship before the Playoff era (2013 season)?", options: ["Auburn", "Florida State", "Alabama", "Ohio State"], answer: "Florida State" },
+                { question: "Which coach has won the most National Championships in the AP Poll era?", options: ["Nick Saban", "Bear Bryant", "Woody Hayes", "Bobby Bowden"], answer: "Nick Saban" }
+            ],
+            heisman_winners: [
+                { question: "Who was the first player to win the Heisman Trophy?", options: ["Jay Berwanger", "Davey O'Brien", "Nile Kinnick", "Tom Harmon"], answer: "Jay Berwanger" },
+                { question: "Which player is the only primarily defensive player to win the Heisman?", options: ["Jabrill Peppers", "Ndamukong Suh", "Chase Young", "Charles Woodson"], answer: "Charles Woodson" },
+                { question: "Which school has produced the most Heisman winners?", options: ["Notre Dame", "Ohio State", "Oklahoma", "USC"], answer: "Ohio State" },
+                { question: "Who won the Heisman Trophy in 2023?", options: ["Michael Penix Jr.", "Bo Nix", "Jayden Daniels", "Marvin Harrison Jr."], answer: "Jayden Daniels" },
+                { question: "Archie Griffin is famous for being the only player to win the Heisman Trophy how many times?", options: ["Once", "Twice", "Three times", "Four times"], answer: "Twice" }
+            ],
+            bowl_history: [
+                { question: "Which bowl game is nicknamed 'The Granddaddy of Them All'?", options: ["Sugar Bowl", "Orange Bowl", "Rose Bowl", "Cotton Bowl"], answer: "Rose Bowl" },
+                { question: "Which city hosts the Sugar Bowl?", options: ["Miami", "Pasadena", "New Orleans", "Dallas"], answer: "New Orleans" },
+                { question: "Which bowl game, started in 1991, was a major postseason game for HBCU schools before the Celebration Bowl?", options: ["Orange Blossom Classic", "Heritage Bowl", "Pelican Bowl", "Vulcan Bowl"], answer: "Heritage Bowl" },
+                { question: "Which company was the long-time sponsor of the Fiesta Bowl before PlayStation?", options: ["Tostitos", "FedEx", "Chick-fil-A", "Capital One"], answer: "Tostitos" },
+                { question: "The 'Iron Bowl' refers to the rivalry game between which two schools, often impacting bowl selections?", options: ["Michigan vs Ohio State", "Texas vs Oklahoma", "Alabama vs Auburn", "Florida vs Florida State"], answer: "Alabama vs Auburn" }
+            ],
+            mascots: [
+                { question: "What animal is the mascot for the University of Texas Longhorns?", options: ["Horse", "Bull", "Cow", "Steer"], answer: "Steer" },
+                { question: "Which university's mascot is 'The Duck'?", options: ["Oregon", "Washington", "UCLA", "Arizona State"], answer: "Oregon" },
+                { question: "What is the official mascot of the University of Alabama?", options: ["Tiger", "Elephant", "Crimson Tide", "Bear"], answer: "Elephant" },
+                { question: "Which school features a live animal mascot named 'Mike the Tiger'?", options: ["Auburn", "Clemson", "LSU", "Missouri"], answer: "LSU" },
+                { question: "What unique mascot represents Stanford University (unofficially)?", options: ["A Color (Cardinal)", "A Tree", "An Earthquake", "A Railroad Spike"], answer: "A Tree" }
+            ],
+            stats: [
+                { question: "Who holds the NCAA Division I FBS record for most career passing yards?", options: ["Case Keenum", "Drew Brees", "Timmy Chang", "Graham Harrell"], answer: "Case Keenum" },
+                { question: "Which player holds the record for most career rushing yards in NCAA Division I FBS?", options: ["Ron Dayne", "Donnel Pumphrey", "Ricky Williams", "Tony Dorsett"], answer: "Donnel Pumphrey" },
+                { question: "What is the record for the longest field goal in NCAA history (all divisions)?", options: ["65 yards", "67 yards", "69 yards", "70 yards"], answer: "69 yards" },
+                { question: "Which coach has the most wins in FBS history?", options: ["Joe Paterno", "Bobby Bowden", "Bear Bryant", "Nick Saban"], answer: "Joe Paterno" },
+                { question: "What is the highest number of points scored by a single team in an FBS game?", options: ["100", "144", "222", "156"], answer: "222" }
+            ]
+        };
+
+        // --- Music Setup (Tone.js) ---
+        function setupMusic() {
+            // Create a simple synth (adjust sound as desired)
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "triangle" }, // Triangle wave for a softer sound
+                envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.2 }
+            }).toDestination();
+
+            // --- User's Custom Song using Tone.Part ---
+            // Timing: "Measure:Beat:Sixteenths" (Beats are 0-indexed)
+            // Durations: 4n=Quarter, 8n=Eighth, 2n.=Dotted Half, 1n=Whole
+            const songEvents = [
+                // Measure 0
+                { time: "0:0", note: "B4", duration: "4n" },    // Beat 0: B4 Quarter
+                { time: "0:1", note: "B4", duration: "4n" },    // Beat 1: B4 Quarter
+                { time: "0:2", note: "D5", duration: "8n" },    // Beat 2: D5 Eighth
+                { time: "0:2:2", note: "D5", duration: "8n" },  // Beat 2+: D5 Eighth
+                { time: "0:3", note: "B4", duration: "4n" },    // Beat 3: B4 Quarter
+                // Measure 1
+                // Beat 0: Quarter Rest (implied gap)
+                // Beat 1: Quarter Rest (implied gap)
+                // Beat 2: Quarter Rest (implied gap)
+                { time: "1:3", note: "B4", duration: "8n" },    // Beat 3: B4 Eighth
+                { time: "1:3:2", note: "C#5", duration: "8n" }, // Beat 3+: C#5 Eighth
+                // Measure 2
+                { time: "2:0", note: "D5", duration: "8n" },    // Beat 0: D5 Eighth
+                { time: "2:0:2", note: "C#5", duration: "8n" }, // Beat 0+: C#5 Eighth
+                { time: "2:1", note: "D5", duration: "2n." },   // Beat 1: D5 Dotted Half (lasts 3 beats)
+                // Measure 3
+                { time: "3:0", note: "G4", duration: "8n" },    // Beat 0: G4 Eighth
+                { time: "3:0:2", note: "F#4", duration: "8n" }, // Beat 0+: F#4 Eighth
+                { time: "3:1", note: "G4", duration: "1n" }     // Beat 1: G4 Whole (lasts 4 beats)
+                // End of sequence at Measure 4, Beat 1
+            ];
+
+            // Create the Tone.Part
+            musicPart = new Tone.Part((time, value) => {
+                // the value is an object which contains both the note and the duration
+                synth.triggerAttackRelease(value.note, value.duration, time);
+            }, songEvents);
+
+            // Set the part to loop
+            musicPart.loop = true;
+            musicPart.loopStart = 0;
+            musicPart.loopEnd = "4:1"; // Loop after the whole note finishes
+
+            // Set the tempo (adjust as desired)
+            // *** UPDATED TEMPO HERE ***
+            Tone.Transport.bpm.value = 120;
+        }
+
+        // --- Music Control ---
+        musicToggleButton.addEventListener('click', async () => {
+            // Start audio context if needed
+            if (Tone.context.state !== 'running') {
+                 await Tone.start();
+                 console.log("Audio Context Started by user interaction.");
+                 // Setup music *after* context is running
+                 if (!synth) setupMusic();
+            }
+
+            // Toggle music playback
+            if (musicPlaying) {
+                Tone.Transport.pause(); // Pause the transport
+                musicToggleButton.textContent = '🎵 Play Music';
+                musicToggleButton.classList.remove('btn-danger');
+                musicToggleButton.classList.add('btn-secondary');
+            } else {
+                 // Ensure music is set up
+                 if (!synth) setupMusic();
+                 // Start the transport, which starts the Part
+                 Tone.Transport.start();
+                 // Start the part explicitly at the beginning of the transport timeline
+                 musicPart.start(0);
+                 musicToggleButton.textContent = ' Mute Music';
+                 musicToggleButton.classList.remove('btn-secondary');
+                 musicToggleButton.classList.add('btn-danger');
+            }
+            musicPlaying = !musicPlaying;
+        });
+
+        // --- Game Logic ---
+        // (Game logic functions: shuffleArray, startGame, loadQuestion, handleAnswer, updateScoreDisplay, showMessageBox, endGame, resetGame remain the same)
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame(mode) {
+            currentMode = mode;
+            let allModeQuestions = [...triviaData[mode]];
+            shuffleArray(allModeQuestions);
+            currentQuestions = allModeQuestions.slice(0, TOTAL_QUESTIONS);
+            questionIndex = 0;
+            score = 0;
+            modeSelectionDiv.classList.add('hidden');
+            gameplayDiv.classList.remove('hidden');
+            messageBox.classList.add('hidden');
+            updateScoreDisplay();
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (questionIndex >= currentQuestions.length) {
+                endGame();
+                return;
+            }
+            const currentQ = currentQuestions[questionIndex];
+            questionText.textContent = currentQ.question;
+            questionCounterDisplay.textContent = `Question ${questionIndex + 1} / ${TOTAL_QUESTIONS}`;
+            answersContainer.innerHTML = '';
+            let options = [...currentQ.options];
+            shuffleArray(options);
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('btn', 'btn-answer');
+                button.addEventListener('click', handleAnswer);
+                answersContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(event) {
+            const selectedButton = event.target;
+            const selectedAnswer = selectedButton.textContent;
+            const correctAnswer = currentQuestions[questionIndex].answer;
+            const answerButtons = answersContainer.querySelectorAll('button');
+            answerButtons.forEach(btn => btn.disabled = true);
+
+            if (selectedAnswer === correctAnswer) {
+                score += 10;
+                selectedButton.classList.add('correct-answer');
+            } else {
+                selectedButton.classList.add('incorrect-answer');
+                 answerButtons.forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.add('border-green-500', 'border-2');
+                    }
+                });
+            }
+            updateScoreDisplay();
+            setTimeout(() => {
+                questionIndex++;
+                answerButtons.forEach(btn => {
+                    btn.classList.remove('correct-answer', 'incorrect-answer', 'border-green-500', 'border-2');
+                });
+                loadQuestion();
+            }, 1500);
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function showMessageBox(title, text) {
+            messageTitle.textContent = title;
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+        }
+
+        function endGame() {
+            const finalScore = score;
+            const maxScore = TOTAL_QUESTIONS * 10;
+            const percentage = (finalScore / maxScore) * 100;
+            let message = `Your final score is ${finalScore} out of ${maxScore} (${percentage.toFixed(0)}%)!`;
+            if (percentage === 100) {
+                 message += "\n🏆 Perfect Score! You're a true champion!";
+            } else if (percentage >= 70) {
+                 message += "\n🏈 Great job! You know your stuff!";
+            } else if (percentage >= 40) {
+                 message += "\n👍 Not bad! Keep practicing!";
+            } else {
+                 message += "\n😅 Back to the film room! Better luck next time!";
+            }
+            showMessageBox("Game Over!", message);
+            gameplayDiv.classList.add('hidden');
+        }
+
+        function resetGame() {
+            modeSelectionDiv.classList.remove('hidden');
+            gameplayDiv.classList.add('hidden');
+            messageBox.classList.add('hidden');
+        }
+
+
+        // --- Event Listeners ---
+        modeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                startGame(button.dataset.mode);
+            });
+        });
+
+        quitGameButton.addEventListener('click', () => {
+             showMessageBox("Quit Game", "Are you sure you want to quit? Your progress will be lost.");
+             messageCloseBtn.onclick = () => {
+                 resetGame();
+                 messageCloseBtn.onclick = resetGame; // Restore default behavior
+             };
+        });
+
+        messageCloseBtn.addEventListener('click', resetGame);
+
+
+    </script>
+
+</body>
+</html>
